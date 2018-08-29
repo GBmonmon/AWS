@@ -34,13 +34,30 @@ class LaunchInstance:
             secgrptouse = secgroups['SecurityGroups'][0]['GroupId']
             return secgrptouse
         except:
-            if vpcid == None: print('No security group, please pass in vpcid as argument to this method...')
+            if vpcid == None:
+                print('No security group, please pass in vpcid as argument to this method...')
+                exit()
             print('No security group, will create security group' + securitygrpname)
             secgrptouse = self.ec2c.create_security_group(GroupName = securitygrpname,
-                                                          escription = 'aws class open ssh, http, https',
+                                                          Description = 'aws class open ssh, http, https',
                                                           VpcId = vpcid)
-            print(secgrptouse,'hahaha----------')
             secgrpid = secgrptouse['GroupId']
+            print('Create security group > ', secgrpid)
+            portlist = [22,80,443]
+            for port in portlist:
+                try:
+                    getvpcandsubnet.ec2c.authorize_security_group_ingress(
+                        CidrIp='0.0.0.0/0',
+                        FromPort=port,
+                        GroupId=secgrpid,
+                        IpProtocol='tcp',
+                        ToPort=port
+                    )
+                except:
+                    print('error opening port: '+ port)
+                    exit()
+            return secgrpid
+
 
 
 
@@ -51,12 +68,13 @@ class LaunchInstance:
 
 
 
-service = 'ec2'
-region = 'us-west-1'
-inst1 = LaunchInstance(service,region)
-vpcid, subnetid = inst1.getVpcAndSubnet()
-securitygrpid = inst1.securityGroup('aws_gbmonmon11', vpcid)
+if __name__ = '__main__':
+    service = 'ec2'
+    region = 'us-west-1'
+    inst1 = LaunchInstance(service,region)
+    vpcid, subnetid = inst1.getVpcAndSubnet()
+    securitygrpid = inst1.securityGroup('aws_gbmonmon1', vpcid)
 
-print(vpcid, subnetid)
-print('------------')
-print(securitygrpid)
+    print(vpcid, subnetid)
+    print('------------')
+    print(securitygrpid)
