@@ -6,8 +6,8 @@ import botocore
 import botocore.exceptions
 from botocore.exceptions import ClientError
 import json
+import sqlite3
 class LaunchInstance:
-
 
     def __init__(self, service, region):
         self.service = service
@@ -46,7 +46,7 @@ class LaunchInstance:
             portlist = [22,80,443]
             for port in portlist:
                 try:
-                    getvpcandsubnet.ec2c.authorize_security_group_ingress(
+                    self.ec2c.authorize_security_group_ingress(
                         CidrIp='0.0.0.0/0',
                         FromPort=port,
                         GroupId=secgrpid,
@@ -63,18 +63,75 @@ class LaunchInstance:
 
 
 
-    def runTheInstance(self):
-        pass
+    def launch_instance(self,ImageId='ami-824c4ee2',
+                        InstanceType='t2.micro',
+                        KeyName='first_key_pair',
+                        SecurityGroupIds='sg-32ce954a',
+                        SubnetId=None,
+                        MaxCount=1,
+                        MinCount=1):
+
+        try:
+            SecurityGroupIds=[SecurityGroupIds]
+            numinstances = 1
+            resp = self.ec2c.run_instances(
+                ImageId=ImageId,
+                InstanceType=InstanceType,
+                KeyName=KeyName,
+                SecurityGroupIds=SecurityGroupIds,
+                SubnetId=SubnetId,
+                MaxCount=numinstances,
+                MinCount=numinstances)
+        except:
+            print("exception:", sys.exc_info()[0])
+            raise
+
+        print('waiting for instance')
+        inst=resp["Instances"][0]
+        instid=inst["InstanceId"]
+        print('Waiting for instance to enter running state')
+        bIsRunning = False
+
+        wait = '#'
+        while bIsRunning == False:
+            rz=self.ec2c.describe_instance_status(InstanceIds=[instid])
+            #call can return before all data is available
+            print(wait)
+            if wait: wait+='#'
+            time.sleep(4)  # avoid to many request from describe_instance_status
+            if not bool(rz):
+                #sys.stdout.write('.')
+                continue
+            if len(rz["InstanceStatuses"]) == 0:
+                #sys.stdout.write('.')
+                continue
+
+            inststate=rz["InstanceStatuses"][0]["InstanceState"]
+            print(json.dumps(inststate,indent=2,separators=(',',':')))
+            state=inststate["Name"]
+            if state == 'running':
+                bIsRunning = True
+            #else:
+                #sys.stdout.write('.')
+                #
+
+        print('EC2 instance is running')
+        return inst
 
 
 
-if __name__ = '__main__':
+
+
+
+
+
+if __name__ == '__main__':
     service = 'ec2'
     region = 'us-west-1'
     inst1 = LaunchInstance(service,region)
     vpcid, subnetid = inst1.getVpcAndSubnet()
     securitygrpid = inst1.securityGroup('aws_gbmonmon1', vpcid)
-
-    print(vpcid, subnetid)
-    print('------------')
-    print(securitygrpid)
+    #print(vpcid, subnetid)
+    #print('------------')
+    #print(securitygrpid)
+    inst1.launch_instance(SecurityGroupIds=securitygrpid,SubnetId=subnetid)
