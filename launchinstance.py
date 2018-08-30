@@ -13,6 +13,7 @@ class LaunchInstance:
         self.service = service
         self.region = region
         self.ec2c = boto3.client(self.service, self.region)
+        self.ec2r = boto3.resource(self.service, self.region)
 
     def getVpcAndSubnet(self):
         resp = self.ec2c.describe_subnets()
