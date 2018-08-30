@@ -1,6 +1,30 @@
 import sqlite3
 from launchinstance import LaunchInstance
 import boto3
+import time
+import os
+
+def create_InstanceIdTable():
+    conn = sqlite3.connect('instID_volID.db')
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS instanceIDs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            instance_id text NOT NULL UNIQUE
+        )
+    ''')
+
+
+def create_VolumeIdTable():
+    conn = sqlite3.connect('instID_volID.db')
+    cur = conn.cursor()
+    cur.execute('''
+        CREATE TABLE IF NOT EXISTS volumeIDs(
+            volume_id text,
+            instanceIDs_id INTEGER,
+            FOREIGN KEY (instanceIDs_id) REFERENCES instanceIDs(id)
+        )
+    ''')
 
 
 
@@ -26,6 +50,39 @@ if __name__ == '__main__':
         resp = instance1.ec2c.describe_instances(InstanceIds=[instanceIdToUse])
         azone = resp['Reservations'][0]['Instances'][0]['Placement']['AvailabilityZone'] ##!!!
         #!!! instanceIdToUse, azone
-        print(azone)
     except:
         print('wrong instanceID...')
+
+    resp_volume = instance1.ec2c.create_volume(AvailabilityZone=azone, Size=2)
+    print(resp_volume)
+
+    volume_id = resp_volume['VolumeId']
+    volume_state = resp_volume.get('State')
+
+    bVolumeReady = False
+    if (volume_state != 'creating'):
+        bVolumeReady = True
+
+    while not bVolumeReady:
+        resp_volume = instance1.ec2c.describe_volumes(VolumeIds=[volume_id])
+        volume_state = resp_volume['Volumes'][0]['State']
+        print('volume state = ' + volume_state)
+        if (volume_state == 'available'):
+            bVolumeReady = True
+        else:
+            print('Volume is not ready')
+            time.sleep(2)
+
+    print('important >>>',volume_id,instanceIdToUse)
+
+    create_InstanceIdTable()
+    create_VolumeIdTable()
+    conn = sqlite3.connect('instID_volID.db')
+    cur = conn.cursor()
+    if not cur.execute('SELECT * FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,)):
+        cur.execute('INSERT INTO instanceIDs(instance_id) VALUES(?)',(instanceIdToUse,))
+        conn.commit()
+    PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
+    PK_from_instanceIDs = PK_from_instanceIDs[0][0]
+    cur.execute('INSERT INTO volumeIDs(volume_id, instanceIDs_id) VALUES(?,?)',(volume_id,PK_from_instanceIDs))
+    conn.commit()
