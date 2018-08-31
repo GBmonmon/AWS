@@ -79,10 +79,14 @@ if __name__ == '__main__':
     create_VolumeIdTable()
     conn = sqlite3.connect('instID_volID.db')
     cur = conn.cursor()
-    if not cur.execute('SELECT * FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,)):
+
+    PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
+    if not PK_from_instanceIDs:
         cur.execute('INSERT INTO instanceIDs(instance_id) VALUES(?)',(instanceIdToUse,))
         conn.commit()
+        print('insert instance_id(%s) to table instanceIDs...'%(instanceIdToUse))
     PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
     PK_from_instanceIDs = PK_from_instanceIDs[0][0]
     cur.execute('INSERT INTO volumeIDs(volume_id, instanceIDs_id) VALUES(?,?)',(volume_id,PK_from_instanceIDs))
+    print('insert volume_id(%s), foreignkey(%s) to table volumeIDs...'%(volume_id,PK_from_instanceIDs))
     conn.commit()
