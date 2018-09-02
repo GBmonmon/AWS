@@ -44,7 +44,7 @@ if __name__ == '__main__':
         #print(inst['Reservations'][0]['Instances'][0]['InstanceId'])
         #instances = inst['Reservations'][0]['Instances']
         all_instances_id = [ inst for inst in insts]
-        instanceIdToUse = input('Which running instance id do you want to attach the volumns?<copy and paste the id>\navailableID:%s > '%(all_instances_id))
+        instanceIdToUse = input('Which running instance id do you want the volumns to attach to?<copy and paste the id>\navailableID:%s > '%(all_instances_id))
     else: print('Type yes or no...')
     try:
         resp = instance1.ec2c.describe_instances(InstanceIds=[instanceIdToUse])
@@ -72,6 +72,8 @@ if __name__ == '__main__':
         else:
             print('Volume is not ready')
             time.sleep(2)
+    resp = instance1.ec2c.attach_volume(Device = '/dev/sdf', Instance=instanceIdToUse, volume=volume_id)
+    print('attached volume to EC2 instance')
 
     print('important >>>',volume_id,instanceIdToUse)
 
@@ -79,6 +81,7 @@ if __name__ == '__main__':
     create_VolumeIdTable()
     conn = sqlite3.connect('instID_volID.db')
     cur = conn.cursor()
+
 
     PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
     if not PK_from_instanceIDs:

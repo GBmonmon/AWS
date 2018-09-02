@@ -71,6 +71,8 @@ class LaunchInstance:
                         SubnetId=None,
                         MaxCount=1,
                         MinCount=1):
+        conn = sqlite3.connect('instID_volID.db')
+        cur = conn.cursor()
 
         try:
             SecurityGroupIds=[SecurityGroupIds]
@@ -106,27 +108,44 @@ class LaunchInstance:
             if len(rz["InstanceStatuses"]) == 0:
                 #sys.stdout.write('.')
                 continue
-
+            #print('----------------')
+            instance_id = rz['InstanceStatuses'][0]['InstanceId']
+            #print('----------------')
             inststate=rz["InstanceStatuses"][0]["InstanceState"]
             print(json.dumps(inststate,indent=2,separators=(',',':')))
             state=inststate["Name"]
             if state == 'running':
                 bIsRunning = True
+
             #else:
                 #sys.stdout.write('.')
                 #
-
+        self.create_InstanceIdTable()
+        record = cur.execute('SELECT * FROM instanceIDs WHERE id = (?)',(instance_id,))
+        record = [ i for i in record]
+        if not record:
+            cur.execute('INSERT INTO instanceIDs(instance_id) VALUES(?)',(instance_id,))
+            conn.commit()
         print('EC2 instance is running')
         return inst
 
 
-
-
+    def create_InstanceIdTable(self):
+        conn = sqlite3.connect('instID_volID.db')
+        cur = conn.cursor()
+        cur.execute('''
+            CREATE TABLE IF NOT EXISTS instanceIDs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                instance_id text NOT NULL UNIQUE
+            )
+        ''')
 
 
 
 
 if __name__ == '__main__':
+    conn = sqlite3.connect('instID_volID.db')
+    cur = conn.cursor()
     service = 'ec2'
     region = 'us-west-1'
     inst1 = LaunchInstance(service,region)
