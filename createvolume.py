@@ -20,6 +20,7 @@ def create_VolumeIdTable():
     cur = conn.cursor()
     cur.execute('''
         CREATE TABLE IF NOT EXISTS volumeIDs(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             volume_id text,
             instanceIDs_id INTEGER,
             FOREIGN KEY (instanceIDs_id) REFERENCES instanceIDs(id)
@@ -54,7 +55,6 @@ if __name__ == '__main__':
         print('wrong instanceID...')
 
     resp_volume = instance1.ec2c.create_volume(AvailabilityZone=azone, Size=2)
-    print(resp_volume)
 
     volume_id = resp_volume['VolumeId']
     volume_state = resp_volume.get('State')
@@ -72,7 +72,7 @@ if __name__ == '__main__':
         else:
             print('Volume is not ready')
             time.sleep(2)
-    resp = instance1.ec2c.attach_volume(Device = '/dev/sdf', Instance=instanceIdToUse, volume=volume_id)
+    resp = instance1.ec2c.attach_volume(Device = '/dev/sdf', InstanceId=instanceIdToUse, VolumeId=volume_id)
     print('attached volume to EC2 instance')
 
     print('important >>>',volume_id,instanceIdToUse)
