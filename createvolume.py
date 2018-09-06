@@ -11,7 +11,7 @@ def create_InstanceIdTable():
     cur.execute('''
         CREATE TABLE IF NOT EXISTS instanceIDs(
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            instance_id text NOT NULL UNIQUE
+            instance_id text
         )
     ''')
 
