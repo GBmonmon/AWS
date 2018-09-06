@@ -34,16 +34,24 @@ if __name__ == '__main__':
     from instanceIDs join volumeIDs on instanceIDs.id = volumeIDs.instanceIDs_id
     ''')
     lst = [i for i in curObj]
-    instance_PK = lst[0][0] #!!!!
-    instance_id = lst[0][1] #!!!!
-    volume_PK = lst[0][2] #!!!!
-    volume_id = lst[0][3] #!!!!
+    instance_id = lst[0][1]
+    lst_volume_id = [ i[3] for i in lst]
 
     region='us-west-1'
     ec2c = boto3.client('ec2', region_name=region)
 
     iz = random.randint(1,9999999)
     description = 'gbmonmon-'+str(iz)
+
+    volume_id = input('Enter which volume to use, available volume:%s > '%lst_volume_id)
+    volume_PK_OBJ = cur.execute('''SELECT volumeIDs.id
+    FROM volumeIDs JOIN instanceIDs
+    ON volumeIDs.instanceIDs_id = instanceIDs.id
+    WHERE volumeIDs.volume_id = (?) ''',(volume_id,))
+    volume_PK = [ i[0] for i in volume_PK_OBJ]
+    volume_PK = volume_PK[0]
+
+
     resp = ec2c.create_snapshot(Description=description, VolumeId=volume_id)
     snapshot_id = resp.get('SnapshotId')
     print('Created snapshot id=%s, description=%s' % (snapshot_id, description))
@@ -75,14 +83,17 @@ if __name__ == '__main__':
     resp=ec2c.describe_instances(InstanceIds=[instance_id])
     instidfrom_ec2 = resp['Reservations'][0]['Instances'][0]['InstanceId']
     print('instidfrom_ec2=' + instidfrom_ec2 + ' instanceidfrom_file=' + instance_id)
-    ec2c.terminate_instances(InstanceIds=[instance_id])
-    print("terminated instance")
+
+
+    '''Let's not terminate the instance we create a new python program for terminating the instance'''
+    ##ec2c.terminate_instances(InstanceIds=[instance_id])
+    ##print("terminated instance")
 
     # when delete a instance, associated records and relationships should be deleted as well.
-    cur.execute('''
-    DELETE FROM InstanceIds WHERE instance_id = (?)
-    ''',(instance_id,))
-    cur.execute('''
-    UPDATE volumeIDs SET instanceIDs_id = NULL WHERE volume_id = (?)
-    ''',(volume_id,))
-    conn.commit()
+    ##cur.execute('''
+    ##DELETE FROM InstanceIds WHERE instance_id = (?)
+    ##''',(instance_id,))
+    ##cur.execute('''
+    ##UPDATE volumeIDs SET instanceIDs_id = NULL WHERE volume_id = (?)
+    ##''',(volume_id,))
+    ##conn.commit()
