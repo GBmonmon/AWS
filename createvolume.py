@@ -3,7 +3,8 @@ from launchinstance import LaunchInstance
 import boto3
 import time
 import os
-
+import random
+import string
 def create_InstanceIdTable():
     conn = sqlite3.connect('instID_volID.db')
     cur = conn.cursor()
@@ -23,6 +24,7 @@ def create_VolumeIdTable():
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             volume_id text,
             instanceIDs_id INTEGER,
+            device text,
             FOREIGN KEY (instanceIDs_id) REFERENCES instanceIDs(id)
         )
     ''')
@@ -30,6 +32,11 @@ def create_VolumeIdTable():
 
 
 if __name__ == '__main__':
+    create_InstanceIdTable()
+    create_VolumeIdTable()
+    conn = sqlite3.connect('instID_volID.db')
+    cur = conn.cursor()
+
     service = 'ec2'
     region = 'us-west-1'
     instance1 = LaunchInstance(service,region)
@@ -72,15 +79,26 @@ if __name__ == '__main__':
         else:
             print('Volume is not ready')
             time.sleep(2)
-    resp = instance1.ec2c.attach_volume(Device = '/dev/sdf', InstanceId=instanceIdToUse, VolumeId=volume_id)
+
+    digits = string.ascii_lowercase[5:16] # 'f~p' according to aws
+    lastdigit = random.choice(digits)
+    device = '/dev/sd'+str(lastdigit)
+    using_deviceOBJ = cur.execute('SELECT device FROM instanceIDs JOIN volumeIDs ON instanceIDs.id = volumeIDs.instanceIDs_id')
+    using_device = [ _[0] for _ in using_deviceOBJ]
+    if len(using_device) >= 11: # 'f~p' according to aws meaning you cannot have more than 11 devices
+        exit()
+
+    while device in using_device:
+        lastdigit = random.choice(digits)
+        device = '/dev/sd'+str(lastdigit)
+        if device not in using_device:
+            break
+
+    resp = instance1.ec2c.attach_volume(Device = device, InstanceId=instanceIdToUse, VolumeId=volume_id)
     print('attached volume to EC2 instance')
 
-    print('important >>>',volume_id,instanceIdToUse)
 
-    create_InstanceIdTable()
-    create_VolumeIdTable()
-    conn = sqlite3.connect('instID_volID.db')
-    cur = conn.cursor()
+    print('important >>>',volume_id,instanceIdToUse)
 
 
     PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
@@ -90,6 +108,6 @@ if __name__ == '__main__':
         print('insert instance_id(%s) to table instanceIDs...'%(instanceIdToUse))
     PK_from_instanceIDs = [ i for i in cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',(instanceIdToUse,) )]
     PK_from_instanceIDs = PK_from_instanceIDs[0][0]
-    cur.execute('INSERT INTO volumeIDs(volume_id, instanceIDs_id) VALUES(?,?)',(volume_id,PK_from_instanceIDs))
+    cur.execute('INSERT INTO volumeIDs(volume_id, instanceIDs_id, device) VALUES(?,?,?)',(volume_id,PK_from_instanceIDs,device))
     print('insert volume_id(%s), foreignkey(%s) to table volumeIDs...'%(volume_id,PK_from_instanceIDs))
     conn.commit()
