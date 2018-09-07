@@ -30,12 +30,10 @@ if __name__ == '__main__':
     conn = sqlite3.connect('instID_volID.db')
     cur = conn.cursor()
     curObj = cur.execute('''
-    select instanceIDs.id, instance_id, volumeIDs.id, volume_id
-    from instanceIDs join volumeIDs on instanceIDs.id = volumeIDs.instanceIDs_id
+    SELECT volumeIDs.volume_id FROM volumeIDs
     ''')
-    lst = [i for i in curObj]
-    instance_id = lst[0][1]
-    lst_volume_id = [ i[3] for i in lst]
+    lst_volume_id = [i[0] for i in curObj]
+    #instance_id = lst[0][1]
 
     region='us-west-1'
     ec2c = boto3.client('ec2', region_name=region)
@@ -44,9 +42,7 @@ if __name__ == '__main__':
     description = 'gbmonmon-'+str(iz)
 
     volume_id = input('Enter which volume to use, available volume:%s > '%lst_volume_id)
-    volume_PK_OBJ = cur.execute('''SELECT volumeIDs.id
-    FROM volumeIDs JOIN instanceIDs
-    ON volumeIDs.instanceIDs_id = instanceIDs.id
+    volume_PK_OBJ = cur.execute('''SELECT volumeIDs.id FROM volumeIDs
     WHERE volumeIDs.volume_id = (?) ''',(volume_id,))
     volume_PK = [ i[0] for i in volume_PK_OBJ]
     volume_PK = volume_PK[0]
@@ -79,11 +75,11 @@ if __name__ == '__main__':
 
 
 
-
+    '''
     resp=ec2c.describe_instances(InstanceIds=[instance_id])
     instidfrom_ec2 = resp['Reservations'][0]['Instances'][0]['InstanceId']
     print('instidfrom_ec2=' + instidfrom_ec2 + ' instanceidfrom_file=' + instance_id)
-
+    '''
 
     '''Let's not terminate the instance we create a new python program for terminating the instance'''
     ##ec2c.terminate_instances(InstanceIds=[instance_id])

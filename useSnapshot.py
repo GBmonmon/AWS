@@ -24,10 +24,8 @@ ON Attachment.volumeIDs_id = VolumeIds.id
 AND Attachment.Snapshot_id = Snapshot.id WHERE Attachment.content = (?)
 ''',(snapShotcontent,))
 snapToUse = [i for i in snapToUseObj]
+
 snapIdToUse = snapToUse[0][1]
-
-
-
 print("using snapshot-id:" + snapIdToUse)
 
 #lauch a new instance
@@ -55,8 +53,9 @@ while not bVolumeReady:
     else:
         print('Volume is not ready')
         time.sleep(20)
-resp = ec2c.attach_volume(Device='/dev/sdf', InstanceId=instid,VolumeId=volume_id)
-print('attached volume to EC2 instance')
+device = '/dev/sdf'
+resp = ec2c.attach_volume(Device=device, InstanceId=instid,VolumeId=volume_id)
+print('attached volume(%s) to EC2 instance(%s)'%(volume_id, instid ))
 
 cur.execute('''
 INSERT INTO InstanceIds(instance_id) VALUES(?)
@@ -67,5 +66,19 @@ selectInstPK = cur.execute('SELECT id FROM instanceIDs WHERE instance_id = (?)',
 instPK = [ _ for _ in selectInstPK]
 instPK = instPK[0][0]
 
-cur.execute('INSERT INTO VolumeIds(volume_id, instanceIDs_id) VALUES(?,?)',(volume_id,instPK))
+cur.execute('INSERT INTO VolumeIDs(volume_id, instanceIDs_id, device) VALUES(?,?,?)',(volume_id,instPK,device))
+conn.commit()
+VolumeOBJ = cur.execute('''SELECT VolumeIDs.id FROM VolumeIDs JOIN instanceIDs
+             ON volumeIDs.instanceIDs_id = instanceIDs.id
+             WHERE VolumeIDs.volume_id = ? AND instanceIDs.id = ?''',(volume_id,instPK))
+VolumePK = [ i[0] for i in VolumeOBJ]
+VolumePK = VolumePK[0]
+
+snapshotOBJ = cur.execute('''SELECT Snapshot.id FROM VolumeIDs JOIN Attachment JOIN Snapshot
+             ON volumeIDs.id = Attachment.volumeIDs_id AND Snapshot.id = Attachment.snapshot_id
+             WHERE Snapshot.snapshot_id = (?)''',(snapIdToUse,))
+snapshotPK = [ i[0] for i in snapshotOBJ]
+snapshotPK = snapshotPK[0]
+
+cur.execute('INSERT INTO Attachment(volumeIDs_id, snapshot_id, content) VALUES (?,?,?)',(VolumePK,snapshotPK,snapShotcontent))
 conn.commit()
