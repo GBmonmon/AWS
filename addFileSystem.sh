@@ -13,7 +13,7 @@ lsblk
 
 #check for data on the device
 #sdf is actually a symlink to xvdf
-sudo file -s /dev/sdf
+sudo file -s /dev/sdn
 
 #/dev/xvdf: data - if you see output that says "data" it means there is
 #no data on the device

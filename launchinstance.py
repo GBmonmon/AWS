@@ -66,7 +66,7 @@ class LaunchInstance:
 
     def launch_instance(self,ImageId='ami-824c4ee2',
                         InstanceType='t2.micro',
-                        KeyName='first_key_pair',
+                        KeyName='key-us-west-1',
                         SecurityGroupIds='sg-32ce954a',
                         SubnetId=None,
                         MaxCount=1,

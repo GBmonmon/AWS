@@ -29,4 +29,6 @@ def delete_all_running_instances():
             UPDATE volumeIDs SET instanceIDs_id = NULL WHERE volume_id = (?)
             ''',(volume_id,))
             conn.commit()
+
+
 delete_all_running_instances()
